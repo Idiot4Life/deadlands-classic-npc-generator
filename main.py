@@ -1,9 +1,9 @@
-
+import sys
 import re
 from deck_of_cards import deck_of_cards
 import random
 
-def findAttrPath(obj, nameOfAttr):
+def findAttrPath(obj, nameOfAttr):                  #search to find attributes. Souped up inefficient 'getattr'
     attrList = []
     for attrName in dir(obj):
         if not attrName.startswith("_"):
@@ -29,12 +29,11 @@ def buildNPC(NPC, characterStats, favoredTrait="random", favoredTraitType="Corpo
 
     characterStats.sort(key=lambda x: x.points)
     
-
-    if hasattr(NPC.Corporeal, favoredTrait):
+    if hasattr(NPC.Corporeal, favoredTrait):        #gets the Trait to apply highest point total to
         attr = getattr(NPC.Corporeal, favoredTrait)
     elif hasattr(NPC.Incorporeal, favoredTrait):
         attr = getattr(NPC.Incorporeal, favoredTrait)
-    else:
+    else:                                           #gets a random trait
         attr = getattr(NPC, favoredTraitType)
         attrs = []
         for x in attr.list:
@@ -42,14 +41,14 @@ def buildNPC(NPC, characterStats, favoredTrait="random", favoredTraitType="Corpo
         attr = random.choice(attrs)
         favoredTrait = attr.name
 
-    thisTrait = characterStats.pop()
+    thisTrait = characterStats.pop()                #sets the trait to highest die and level
     attr.level = thisTrait.level
     attr.die = thisTrait.die
 
-    corporealTraits = NPC.Corporeal.list.copy()
+    corporealTraits = NPC.Corporeal.list.copy()     #getting ready to assign rest of traits randomly
     incorporealTraits = NPC.Incorporeal.list.copy()
 
-    if favoredTrait in corporealTraits:
+    if favoredTrait in corporealTraits:             #gets rid of favored trait from list
         corporealTraits.remove(favoredTrait)
     elif favoredTrait in incorporealTraits:
         incorporealTraits.remove(favoredTrait)
@@ -57,14 +56,14 @@ def buildNPC(NPC, characterStats, favoredTrait="random", favoredTraitType="Corpo
     random.shuffle(corporealTraits)
     random.shuffle(incorporealTraits)
 
-    if favoredTraitType == "Corporeal":
+    if favoredTraitType == "Corporeal":             #favored trait types get higher numbers than unfavored trait types
         allTraits = corporealTraits
         allTraits.extend(incorporealTraits)
     else:
         allTraits = incorporealTraits
         allTraits.extend(corporealTraits)
 
-    for trait in allTraits:
+    for trait in allTraits:                         #assign trait levels
         try:
             attr = getattr(NPC.Corporeal, trait)
         except:
@@ -83,12 +82,12 @@ def buildNPC(NPC, characterStats, favoredTrait="random", favoredTraitType="Corpo
 
     random.shuffle(allAptitudes)
     favoredAptitudes.reverse()
-    for aptitude in favoredAptitudes:
+    for aptitude in favoredAptitudes:               #place favored aptitudes at beggining of aptitude list
         allAptitudes.remove(aptitude)
         allAptitudes.insert(0, aptitude)
 
     i = 0
-    while aptitudePoints > 0:
+    while aptitudePoints > 0:                       #determine how to spend points on each aptitude. I just guessed some numbers and fiddled with this until it gave the balance I wanted
         if aptitudePoints > 35:
             pointsToSpend = 10
         elif aptitudePoints > 15:
@@ -101,12 +100,12 @@ def buildNPC(NPC, characterStats, favoredTrait="random", favoredTraitType="Corpo
         aptitude = findAttrPath(NPC, allAptitudes[i])
 
 
-        while pointsToSpend >= (aptitude.level+1):
+        while pointsToSpend >= (aptitude.level+1):  #level up
             aptitude.level += 1
             pointsToSpend -= aptitude.level
 
         if len(aptitude.possibleConcentrations) > 0:
-            aptitude.concentrations.append(random.choice(aptitude.possibleConcentrations))
+            aptitude.concentrations.append(random.choice(aptitude.possibleConcentrations))      #gets a random available concentration
 
         i += 1
 
@@ -118,7 +117,7 @@ def buildNPC(NPC, characterStats, favoredTrait="random", favoredTraitType="Corpo
 
 class Trait:
     level = 1
-    die = "d4"
+    die = "d4"                                  #die probably should have been its own class. Didn't consider soon enough. Now I get to do regex parsing for the rest of my life
 class Aptitude:
     def __init__(self, name):
         self.level = 0
@@ -143,11 +142,6 @@ class NPC:
         print("Pace: " + str(self.pace))
         print("Size: " + str(self.size))
         
-        
-        
-        
-
-
 
     def printAptitudes(self, trait, list):
         for aptName in list:
@@ -277,7 +271,7 @@ class NPC:
 
     
     
-class Stats:
+class Stats:                                                    #built using 20th anniversary rulebook. Probably doesn't create balanced characters.
     def getCardLevel(self, card):
         if card.suit == 0:
             return 4
@@ -299,9 +293,9 @@ class Stats:
             return "d10"
         else:
             return "d12"
-    def getCardPoints(self, level, die, levelMultiplier):
-        if level == 4:
-            points = (18*levelMultiplier)
+    def getCardPoints(self, level, die, levelMultiplier):       #I determine how many 'points' a card is worth by assuming a trait is by default 1d4. I then calculate how many points a card is worth by using the...
+        if level == 4:                                          #progression rules in the rulebook. This gives me a point total for each card. The levelMultiplier exists to make the NPCs favor number of dice...
+            points = (18*levelMultiplier)                       #over die type. The higher the multiplier, the more the NPC will prefer number of dice over the type. 2 felt like a good balance. 1 would be default.
         elif level == 3:
             points = (10*levelMultiplier)
         elif level == 2:
@@ -331,12 +325,27 @@ class Stats:
     def toString(self):
         return str(self.level) + self.die
 
-
+                                                                #TODO add arg error handling
 
 if __name__ == "__main__":
 
+    if len(sys.argv) > 1:
+        favoredTrait = sys.argv[1]
+    else:
+        favoredTrait = "Deftness"
+    
+    if len(sys.argv) > 2:
+        favoredTraitType = sys.argv[2]
+    else:
+        favoredTraitType = "Corporeal"
+    
+    if len(sys.argv) > 3:
+        favoredAptitudes = sys.argv[3:].copy()
+    else:
+        favoredAptitudes = ['Shootin', 'Fightin']
+
     myDeck = deck_of_cards.DeckOfCards()
-    #myDeck.add_jokers()
+    #myDeck.add_jokers()                                        #TODO add joker functionality
     myDeck.shuffle_deck()
 
     rawCharacterStats = []
@@ -348,11 +357,11 @@ if __name__ == "__main__":
     rawCharacterStats.sort(key=lambda x: x.points)
 
     i = 0
-    while len(rawCharacterStats) > 10:
+    while len(rawCharacterStats) > 10:                          #trash two lowest cards that aren't d4s/2s
         if rawCharacterStats[i].die != "d4":
             del rawCharacterStats[i]
         else:
             i += 1
 
-    bob = buildNPC(NPC(), rawCharacterStats[:], 'Spirit', 'Corporeal', ['Shootin', 'Fightin'])
+    bob = buildNPC(NPC(), rawCharacterStats[:], favoredTrait, favoredTraitType, favoredAptitudes)
     bob.print()
